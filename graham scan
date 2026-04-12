@@ -1,0 +1,118 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Point {
+    int x, y;
+};
+
+// Global pivot
+Point p0;
+
+// Function to find orientation
+int orientation(Point p, Point q, Point r) {
+    int val = (q.y - p.y) * (r.x - q.x) -
+              (q.x - p.x) * (r.y - q.y);
+
+    if (val == 0) return 0;        // collinear
+    return (val > 0) ? 1 : 2;      // 1 = clockwise, 2 = counterclockwise
+}
+
+// Distance squared (to avoid sqrt)
+int distSq(Point p1, Point p2) {
+    return (p1.x - p2.x)*(p1.x - p2.x) +
+           (p1.y - p2.y)*(p1.y - p2.y);
+}
+
+// Comparator for sorting
+bool compare(Point p1, Point p2) {
+    int o = orientation(p0, p1, p2);
+
+    if (o == 0)
+        return distSq(p0, p1) < distSq(p0, p2);
+
+    return (o == 2); // counterclockwise comes first
+}
+
+// Function to find convex hull
+vector<Point> grahamScan(vector<Point>& points) {
+    int n = points.size();
+
+    // Step 1: Find bottom-most point
+    int ymin = points[0].y, minIndex = 0;
+    for (int i = 1; i < n; i++) {
+        if ((points[i].y < ymin) ||
+           (points[i].y == ymin && points[i].x < points[minIndex].x)) {
+            ymin = points[i].y;
+            minIndex = i;
+        }
+    }
+
+    // Swap pivot with first point
+    swap(points[0], points[minIndex]);
+    p0 = points[0];
+
+    // Step 2: Sort points by polar angle
+    sort(points.begin() + 1, points.end(), compare);
+
+    // Step 3: Remove collinear points except farthest
+    vector<Point> temp;
+    temp.push_back(points[0]);
+
+    for (int i = 1; i < n; i++) {
+        while (i < n - 1 &&
+               orientation(p0, points[i], points[i + 1]) == 0)
+            i++;
+        temp.push_back(points[i]);
+    }
+
+    if (temp.size() < 3) return temp;
+
+    // Step 4: Build hull using stack
+    stack<Point> st;
+    st.push(temp[0]);
+    st.push(temp[1]);
+    st.push(temp[2]);
+
+    for (int i = 3; i < temp.size(); i++) {
+        while (st.size() > 1) {
+            Point top = st.top();
+            st.pop();
+            Point nextToTop = st.top();
+
+            if (orientation(nextToTop, top, temp[i]) != 2)
+                continue;
+            else {
+                st.push(top);
+                break;
+            }
+        }
+        st.push(temp[i]);
+    }
+
+    // Convert stack to vector
+    vector<Point> hull;
+    while (!st.empty()) {
+        hull.push_back(st.top());
+        st.pop();
+    }
+
+    reverse(hull.begin(), hull.end());
+    return hull;
+}
+
+// Driver code
+int main() {
+    vector<Point> points = {
+        {0, 0}, {1, 1}, {2, 2},
+        {2, 0}, {0, 2}, {1, 2}
+    };
+
+    vector<Point> hull = grahamScan(points);
+
+    cout << "Convex Hull:\n";
+    for (auto p : hull) {
+        cout << "(" << p.x << ", " << p.y << ")\n";
+    }
+
+    return 0;
+}
